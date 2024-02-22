@@ -1,7 +1,9 @@
+import torch
 from torch import nn
 from .modules import FiLMLayer, PositionalEncoding, Postnet
 from torchaudio.models.conformer import ConformerLayer
-import torch
+
+from .conformer import DFconformer
 
 
 class Miipher(nn.Module):
@@ -23,9 +25,15 @@ class Miipher(nn.Module):
 
         self.positional_encoding = PositionalEncoding(n_hidden_dim)
         self.positional_encoding_film = FiLMLayer(n_hidden_dim, n_hidden_dim)
-        self.conformer_blocks = nn.ModuleList()
-        for i in range(n_conformer_blocks):
-            self.conformer_blocks.append(FeatureCleanerBlock(n_hidden_dim, 8))
+        
+        # Defining the conformer
+        # self.conformer_blocks = nn.ModuleList()
+        # for i in range(n_conformer_blocks):
+        #     self.conformer_blocks.append(FeatureCleanerBlock(n_hidden_dim, 8))
+        
+        # Defining DFConformer --- changed made on 02/22/24 by haici
+        self.dfconformer = DFconformer(input_size=1024, output_size=1024, filters=512, num_heads=8, expansion_factors=[4,4])
+        
         self.postnet = Postnet(
             n_hidden_dim,
             postnet_embedding_dim=512,
@@ -62,10 +70,15 @@ class Miipher(nn.Module):
             phone_speaker_feature = self.positional_encoding_film(
                 phone_speaker_feature, pos_enc
             )
-            for i in range(self.n_conformer_blocks):
-                ssl_feature = self.conformer_blocks[i](
-                    ssl_feature.clone(), phone_speaker_feature, ssl_feature_lengths
-                )
+            
+            # --- Origianl Conformer----- 
+            # for i in range(self.n_conformer_blocks):
+            #     ssl_feature = self.conformer_blocks[i](
+            #         ssl_feature.clone(), phone_speaker_feature, ssl_feature_lengths
+            #     )
+            # --- Replace with DFConformer ---- (02/22/24 haici)
+            ssl_feature, *_ = self.dfconformer(ssl_feature.clone())
+            
             intermediates.append(ssl_feature.clone())
             ssl_feature += self.postnet(ssl_feature.clone())
             intermediates.append(ssl_feature.clone())

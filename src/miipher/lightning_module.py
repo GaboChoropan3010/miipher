@@ -34,13 +34,19 @@ class FeatureExtractor():
         phone_feature = self.phoneme_model(
             **inputs["phoneme_input_ids"]
         ).last_hidden_state
+        
+        # print(inputs["clean_ssl_input"].keys()) #dict_keys(['input_values', 'attention_mask']) / input_features
+        
         if 'clean_ssl_input' in inputs.keys():
             clean_ssl_feature = self.speech_ssl_model(
                 **inputs["clean_ssl_input"], output_hidden_states=True
             )
+            
             clean_ssl_feature = clean_ssl_feature.hidden_states[
                 self.cfg.model.ssl_models.layer
             ]
+            # print(clean_ssl_feature.shape) # (bt, 149, 1024)
+            # fake()
         else:
             clean_ssl_feature = None
 

@@ -6,6 +6,10 @@ import torch
 import torchaudio
 import hydra
 
+import glob
+
+from .data import SimEnhanceDataset
+
 
 class MiipherDataModule(LightningDataModule):
     def __init__(self, cfg) -> None:
@@ -17,28 +21,158 @@ class MiipherDataModule(LightningDataModule):
         self.phoneme_tokenizer = hydra.utils.instantiate(cfg.data.phoneme_tokenizer)
         self.cfg = cfg
 
+    def get_dataset(self, task = 'train'): # **** TODO(HAICI) ***
+
+        assert task == 'train' or task == 'val'
+
+        if task == 'train':
+            # speech_list = prepare_files([
+            #     f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/daps_speech_{task}.txt", # daps
+            #     f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/vctk_speech_{task}.txt", # vctk
+            #     "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/libritts_filt_speech.txt", # libritts
+            #     "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/podcasts_speech.txt" # podcast
+            # ])
+            # print(len(speech_list))
+            
+            # tr_path = '/N/project/SAIGE_shared/librittsR/LibriTTS_R/train-clean-360' 
+            tr_path = '/data/hy17/librittsR/LibriTTS_R/train-clean-360' 
+            speech_list = glob.glob(tr_path + '/*/*/*.wav')
+        else:
+            tr_path = '/data/hy17/librittsR/LibriTTS_R/dev-clean' 
+            speech_list = glob.glob(tr_path + '/*/*/*.wav')
+        
+        
+        # rir_list = prepare_files([
+        #     f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/rir/mit_rir_{task}.txt",
+        #     "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/rir/echothief_rir.txt",
+        #     "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/rir/openslr_rir.txt"
+        # ]) 
+        
+        rir_path = '/data/hy17/rirs/*/*/*/*/*.wav'
+        rir_list = glob.glob(rir_path)
+        
+        # noise_list = glob.glob('/N/project/SAIGE_shared/noise/WHAM/high_res_wham/audio/*.wav')
+        noise_list = glob.glob('/data/hy17/noise/WHAM/high_res_wham/audio/*.wav')
+        
+        
+        # elif task == 'val':
+        #     speech_list = prepare_files([
+        #         f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/daps_speech_{task}.txt", # daps
+        #         f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/speech/vctk_speech_{task}.txt", # vctk
+        #     ])
+        #     rir_list = prepare_files([f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/rir/mit_rir_{task}.txt"]) 
+        
+        # noise_list = prepare_files([
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/basic_noise.txt",
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/esc50_noise.txt",
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/dns_noise.txt",
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/isolated_urban_noise.txt",
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/wham_noise.txt",
+        #         "/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/noise/sfs_noise.txt",
+        #         ])
+        
+        
+        if task == 'train':
+            dataset = SimEnhanceDataset(
+                            name='sim', 
+                            sample_rate=44100,
+                            size=44100 * 3 , # 3s
+                            speech_list=speech_list, 
+                            noise_list=noise_list, 
+                            reverb_list=rir_list, 
+                            sim_params={
+                                        "speech_speed_range": (0.9, 1.1), 
+                                        "speech_target_level": -25,
+                                        "drr_prob": 1.0,  # 0
+                                        "drr_scale": (0.5, 2.0),
+                                        "rt60_prob": 1.0,  # 0
+                                        "rt60_scale": (0.5, 2.0),
+                                        "eq_prob": 1.0, 
+                                        "eq_mod_range": (-10, 10), # Jiaqi - enable greater variation of simulation
+                                        "snr_range": (-10, 30), # (10, 10)
+                                        "clip_prob": 0.2, 
+                                        "clip_range": (0.5, 1.0),
+                                        "level_range": (-30, -20),
+                                        "sndfx_prob": 0.3,         # Jiaqi - enable greater variation of simulation 
+                                        "denoise_prob": 0,         # Disable post effects that are computationally expensive
+                                        "noise_prob": 0.999,              
+                                        "reverb_prob": 0.999,             
+                                        "speech_prob": 1.0,
+                                        "sndfx_option_probs": {    # Jiaqi - enable greater variation of simulation
+                                        "overdrive": 0.2,
+                                        "phaser": 0.2,
+                                        "compand": 0.8,
+                                        },
+                                        "lowpass_prob": 0.8,        # Jiaqi - enable greater variation of simulation
+                            },
+                            # count_reverb = (task == "val"),
+                            count_reverb = False
+                        )
+        else:
+            dataset = SimEnhanceDataset(
+                            name='sim', 
+                            sample_rate=44100,
+                            size=44100 * 3 , # 3s
+                            speech_list=speech_list, 
+                            noise_list=noise_list, 
+                            reverb_list=rir_list, 
+                            sim_params={
+                                        "speech_speed_range": (0.9, 1.1), 
+                                        "speech_target_level": -25,
+                                        "drr_prob": 0, 
+                                        "drr_scale": (0.5, 2.0),
+                                        "rt60_prob": 0, 
+                                        "rt60_scale": (0.5, 2.0),
+                                        "eq_prob": 1.0, 
+                                        "eq_mod_range": (-10, 10), # Jiaqi - enable greater variation of simulation
+                                        "snr_range": (10, 10), 
+                                        "clip_prob": 0.2, 
+                                        "clip_range": (0.5, 1.0),
+                                        "level_range": (-30, -20),
+                                        "sndfx_prob": 0.3,         # Jiaqi - enable greater variation of simulation 
+                                        "denoise_prob": 0,         # Disable post effects that are computationally expensive
+                                        "noise_prob": 0.999,              
+                                        "reverb_prob": 0.999,             
+                                        "speech_prob": 1.0,
+                                        "sndfx_option_probs": {    # Jiaqi - enable greater variation of simulation
+                                        "overdrive": 0.2,
+                                        "phaser": 0.2,
+                                        "compand": 0.8,
+                                        },
+                                        "lowpass_prob": 0.8,        # Jiaqi - enable greater variation of simulation
+                            },
+                            # count_reverb = (task == "val"),
+                            count_reverb = False
+                        )
+
+
+        return dataset
+
     def setup(self, stage: str):
-        self.train_dataset = (
-            wds.WebDataset(
-                self.cfg.data.train_dataset_path,
-                resampled=True,
-                nodesplitter=wds.split_by_node,
-            )
-            .shuffle(1000)
-            .decode(wds.torch_audio)
-            # .decode(self.decode_phoneme_input)
-            .repeat(2)
-            .with_length(20000 * self.cfg.data.train_batch_size)
-        )
-        self.val_dataset = (
-            wds.WebDataset(
-                self.cfg.data.val_dataset_path, nodesplitter=wds.split_by_node
-            )
-            .decode(wds.torch_audio)
-            # .decode(self.decode_phoneme_input)
-            .repeat(2)
-            .with_length(3000 * 4 // self.cfg.data.val_batch_size)
-        )
+        # self.train_dataset = (
+        #     wds.WebDataset(
+        #         self.cfg.data.train_dataset_path,
+        #         resampled=True,
+        #         nodesplitter=wds.split_by_node,
+        #     )
+        #     .shuffle(1000)
+        #     .decode(wds.torch_audio)
+        #     # .decode(self.decode_phoneme_input)
+        #     .repeat(2)
+        #     .with_length(20000 * self.cfg.data.train_batch_size)
+        # )
+        # self.val_dataset = (
+        #     wds.WebDataset(
+        #         self.cfg.data.val_dataset_path, nodesplitter=wds.split_by_node
+        #     )
+        #     .decode(wds.torch_audio)
+        #     # .decode(self.decode_phoneme_input)
+        #     .repeat(2)
+        #     .with_length(3000 * 4 // self.cfg.data.val_batch_size)
+        # )
+        
+        self.train_dataset = self.get_dataset(task='train')
+        self.val_dataset = self.get_dataset(task='val')
 
     def train_dataloader(self):
         return DataLoader(
@@ -63,11 +197,15 @@ class MiipherDataModule(LightningDataModule):
         clean_wav_16ks = []
 
         for sample in batch:
-            clean_wav, sr = sample["speech.wav"]
+
+            # clean_wav, sr = sample["speech.wav"]
+
+            clean_wav = torch.tensor(sample["clean"])
+            sr = 44100 # **** TODO(HAICI) ***
             clean_wav_16ks.append(
                 torchaudio.functional.resample(clean_wav, sr, new_freq=16000).squeeze()[:16000*20]
             )
-            degraded_wav, sr = sample["degraded_speech.wav"]
+            degraded_wav = torch.tensor(sample["noise"])
             degraded_wav_16ks.append(
                 torchaudio.functional.resample(
                     degraded_wav, sr, new_freq=16000
@@ -89,7 +227,10 @@ class MiipherDataModule(LightningDataModule):
             sampling_rate=16000,
             padding=True,
         )
+        # output["phoneme_input_ids"] = self.phoneme_tokenizer(
+        #     [b["phoneme.txt"] for b in batch], return_tensors="pt", padding=True
+        # )
         output["phoneme_input_ids"] = self.phoneme_tokenizer(
-            [b["phoneme.txt"] for b in batch], return_tensors="pt", padding=True
+            ['' for b in batch], return_tensors="pt", padding=True
         )
         return output
