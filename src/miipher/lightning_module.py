@@ -98,6 +98,7 @@ class MiipherLightningModule(LightningModule):
         with torch.cuda.amp.autocast(enabled=False):
             loss = self.criterion(intermediates.float(), clean_ssl_feature.float(),log=True,stage='train')
         self.log("train/loss", loss, batch_size=phone_feature.size(0),prog_bar=True)
+        
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT | None:
@@ -113,6 +114,7 @@ class MiipherLightningModule(LightningModule):
         with torch.cuda.amp.autocast(enabled=False):
             loss = self.criterion(intermediates.float(), clean_ssl_feature.float(),log=True,stage='val')
         self.log("val/loss", loss, batch_size=phone_feature.size(0))
+        
         if batch_idx < 10 and self.global_rank == 0 and self.local_rank==0:
             cleaned_wav = self.synthesis(cleaned_feature[0], batch["degraded_wav_16k"][0], batch["degraded_wav_16k_lengths"][0])
             self.log_audio(cleaned_wav, f"val/cleaned_wav/{batch_idx}", 22050)
@@ -140,6 +142,7 @@ class MiipherLightningModule(LightningModule):
                 self.log(f'{stage}/{idx}/mae_loss', mae_loss)
                 self.log(f'{stage}/{idx}/mse_loss', mse_loss)
                 self.log(f'{stage}/{idx}/spectoral_loss', spectoral_loss)
+                
 
         return loss
     @torch.inference_mode()

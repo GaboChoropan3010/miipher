@@ -35,8 +35,8 @@ class MiipherDataModule(LightningDataModule):
             # print(len(speech_list))
             
             # tr_path = '/N/project/SAIGE_shared/librittsR/LibriTTS_R/train-clean-360' 
-            tr_path = '/data/hy17/librittsR/LibriTTS_R/train-clean-360' 
-            speech_list = glob.glob(tr_path + '/*/*/*.wav')
+            tr_path = '/data/hy17/librittsR/LibriTTS_R/train-clean-360/*/*/*.wav'
+            speech_list = glob.glob(tr_path)
         else:
             tr_path = '/data/hy17/librittsR/LibriTTS_R/dev-clean' 
             speech_list = glob.glob(tr_path + '/*/*/*.wav')
@@ -52,7 +52,7 @@ class MiipherDataModule(LightningDataModule):
         rir_list = glob.glob(rir_path)
         
         # noise_list = glob.glob('/N/project/SAIGE_shared/noise/WHAM/high_res_wham/audio/*.wav')
-        noise_list = glob.glob('/data/hy17/noise/WHAM/high_res_wham/audio/*.wav')
+        noise_list = glob.glob('/data/hy17/noise/TAU_Urban_Audio/audio/*.wav')
         
         
         # elif task == 'val':

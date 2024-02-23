@@ -109,12 +109,15 @@ data:
     pretrained_model_name_or_path: "vinai/xphonebert-base"
 train:
   loggers:
-    - _target_: lightning.pytorch.loggers.WandbLogger
-      project: "miipher"
+    # - _target_: lightning.pytorch.loggers.WandbLogger
+    #   project: "miipher"
+    - _target_: lightning.pytorch.loggers.TensorBoardLogger
+      save_dir: "../tb_runs/w2v-bert"
+      # project: "miipher-w2v-bert" # **** TODO(HAICI) ***
   trainer:
     _target_: lightning.Trainer
     accelerator: "gpu"
-    devices: 1 # -1 # **** TODO(HAICI) ***
+    devices: -1 # **** TODO(HAICI) ***
     check_val_every_n_epoch: 1
     max_epochs: 3300
 model:
