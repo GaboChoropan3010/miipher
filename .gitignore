@@ -184,3 +184,8 @@ pyrightconfig.json
 wandb/
 tb_runs/
 src/outputs/
+eval_wavlm_finetune/
+eval_wavlm_orig/
+eval-wavlm-df/
+test_set/
+output_samples/

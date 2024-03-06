@@ -27,6 +27,7 @@ class PreprocessForInfer(torch.nn.Module):
         )
         input_ids = self.phoneme_tokenizer(input_phonemes, return_tensors="pt")
         return input_ids, input_phonemes
+    
     def process(self,basename, degraded_audio,word_segmented_text=None,lang_code=None, phoneme_text=None):
         degraded_audio,sr = degraded_audio
         output = dict()
@@ -35,6 +36,7 @@ class PreprocessForInfer(torch.nn.Module):
             input_ids, input_phonems = self.get_phonemes_input_ids(
                 word_segmented_text, lang_code
             )
+
             output['phoneme_input_ids'] = input_ids
         elif phoneme_text == None:
             raise ValueError

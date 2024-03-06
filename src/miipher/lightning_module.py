@@ -1,16 +1,18 @@
-from typing import Any, Optional
+import hydra
+import torch
+from torch import nn
+from lightning.pytorch import loggers
 from lightning.pytorch import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-from lightning_vocoders.models.hifigan.lightning_module import MultiPeriodDiscriminator, MultiScaleDiscriminator
-from .model.miipher import Miipher
-from omegaconf import DictConfig
-from lightning.pytorch import loggers
-from torch import nn
-from typing import List
-from lightning_vocoders.models.hifigan.xvector_lightning_module import HiFiGANXvectorLightningModule
-import torch
-import hydra
 
+from omegaconf import DictConfig
+from scipy.io.wavfile import write
+from matplotlib import pyplot as plt
+from typing import List, Any, Optional
+
+from .model.miipher import Miipher
+from lightning_vocoders.models.hifigan.lightning_module import MultiPeriodDiscriminator, MultiScaleDiscriminator
+from lightning_vocoders.models.hifigan.xvector_lightning_module import HiFiGANXvectorLightningModule
 
 class FeatureExtractor():
     def __init__(self,cfg) -> None:
@@ -31,12 +33,28 @@ class FeatureExtractor():
         xvector = self.xvector_model.mods.embedding_model(feats, wav_16k_lens).squeeze(
             1
         )
+        
+        # def draw_feature(feature, note):
+        #     normalized = (feature - torch.min(feature.flatten()))
+        #     plt.imshow(torch.log(normalized + 1e-20).cpu().data.numpy().T, origin='lower', aspect='auto', vmin=-5)
+        #     plt.colorbar()
+        #     plt.savefig(f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/ssl_feature_{note}.jpg')
+        #     plt.clf()
+
         phone_feature = self.phoneme_model(
             **inputs["phoneme_input_ids"]
         ).last_hidden_state
         
         # print(inputs["clean_ssl_input"].keys()) #dict_keys(['input_values', 'attention_mask']) / input_features
+        # signal = **inputs["clean_ssl_input"]['input_values']
+        # plt.plot(signal[0].cpu().data.numpy())
+        # plt.savefig(f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/signal.jpg')
+        # plt.clf()
         
+        # clean_ssl_feature
+
+        
+        # original
         if 'clean_ssl_input' in inputs.keys():
             clean_ssl_feature = self.speech_ssl_model(
                 **inputs["clean_ssl_input"], output_hidden_states=True
@@ -56,6 +74,11 @@ class FeatureExtractor():
         degraded_ssl_feature = degraded_ssl_feature.hidden_states[
             self.cfg.model.ssl_models.layer
         ]
+        
+        # draw_feature(clean_ssl_feature[0], 'clean')
+        # draw_feature(degraded_ssl_feature[0], 'degraded')
+        # fake()
+        
 
         return phone_feature, xvector, degraded_ssl_feature, clean_ssl_feature
 
@@ -68,7 +91,10 @@ class MiipherLightningModule(LightningModule):
     def __init__(self, cfg: DictConfig) -> None:
         super().__init__()
 
+        # miipher_path = "https://huggingface.co/spaces/Wataru/Miipher/resolve/main/miipher.ckpt"
+        # self.miipher = self.load_from_checkpoint(miipher_path,map_location='cpu')
         self.miipher = Miipher(**cfg.model.miipher)
+        
         self.mse_loss = nn.MSELoss()
         self.mae_loss = nn.L1Loss()
         self.cfg = cfg
@@ -80,6 +106,7 @@ class MiipherLightningModule(LightningModule):
         self.feature_extractor.to(self.device)
 
     def forward(self,phone_feature, speaker_feature, degraded_ssl_feature):
+        
         cleaned_feature, intermediates = self.miipher.forward(
             phone_feature.clone(), speaker_feature.clone(), degraded_ssl_feature.clone()
         )
@@ -92,9 +119,20 @@ class MiipherLightningModule(LightningModule):
             clean_ssl_feature,
         ) = self.feature_extractor(batch)
 
+        # print(batch.keys()) # dict_keys(['degraded_wav_16k', 'degraded_wav_16k_lengths', 'clean_ssl_input', 'degraded_ssl_input', 'phoneme_input_ids'])
+
         cleaned_feature, intermediates = self.miipher.forward(
             phone_feature.clone(), speaker_feature.clone(), degraded_ssl_feature.clone()
         )
+        # print(len(clean_ssl_feature))
+        # print(clean_ssl_feature.shape)
+        # fake()
+        # wav = self.synthesis(degraded_ssl_feature[0], batch["degraded_wav_16k"][0], batch["degraded_wav_16k_lengths"][0])
+        # write(f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/degraded_feature_sound.wav', 22050, wav.data.numpy())
+        # # torchaudio.save(f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/clean_feature_sound.wav', cleaned_wav, 22050)
+        # # self.log_audio(cleaned_wav, f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/clean', 22050)
+        # fake()
+        
         with torch.cuda.amp.autocast(enabled=False):
             loss = self.criterion(intermediates.float(), clean_ssl_feature.float(),log=True,stage='train')
         self.log("train/loss", loss, batch_size=phone_feature.size(0),prog_bar=True)
@@ -111,6 +149,8 @@ class MiipherLightningModule(LightningModule):
         cleaned_feature, intermediates = self.miipher.forward(
             phone_feature, speaker_feature, degraded_ssl_feature
         )
+        
+        
         with torch.cuda.amp.autocast(enabled=False):
             loss = self.criterion(intermediates.float(), clean_ssl_feature.float(),log=True,stage='val')
         self.log("val/loss", loss, batch_size=phone_feature.size(0))
@@ -128,9 +168,23 @@ class MiipherLightningModule(LightningModule):
         return hydra.utils.instantiate(self.cfg.optimizers, params=self.miipher.parameters())
 
     def criterion(self, intermediates: List[torch.Tensor], target: torch.Tensor,log=False,stage='train'):
+        # def draw_feature(feature, note):
+        #     feature += 80
+        #     plt.imshow(torch.log(feature).cpu().data.numpy().T, origin='lower', aspect='auto')
+        #     plt.colorbar()
+        #     plt.savefig(f'/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/ssl_feature_{note}.jpg')
+        #     plt.clf()
+            
         loss = 0
         minimum_length = min(intermediates[0].size(1), target.size(1))
         target = target[:, :minimum_length, :].clone()
+        # id = 10
+        # draw_feature(target[10], 'target')
+        # draw_feature(intermediates[0][10], '0')
+        # draw_feature(intermediates[1][10], '1')
+        # draw_feature(intermediates[2][10], '2')
+        # draw_feature(intermediates[3][10], '3')
+        # fake()
         for idx, intermediate in enumerate(intermediates):
             intermediate = intermediate[:, :minimum_length, :].clone()
             loss = loss + self.mae_loss(intermediate, target).clone()

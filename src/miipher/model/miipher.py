@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from .modules import FiLMLayer, PositionalEncoding, Postnet
 from torchaudio.models.conformer import ConformerLayer
+from matplotlib import pyplot as plt
 
 from .conformer import DFconformer
 
@@ -82,7 +83,16 @@ class Miipher(nn.Module):
             intermediates.append(ssl_feature.clone())
             ssl_feature += self.postnet(ssl_feature.clone())
             intermediates.append(ssl_feature.clone())
-        return ssl_feature, torch.stack(intermediates)
+        
+        # print(ssl_feature.shape)
+        # plt.imshow(ssl_feature[0].data.numpy().T, origin='lower', aspect='auto')
+        # plt.colorbar()
+        # plt.savefig('/home/hy17/Projects/EXTERNAL/miipher/miipher/output_samples/ssl_feature_retrain.jpg')
+        # # fake()
+        # print(ssl_feature.shape)
+        # print(torch.stack(intermediates).shape) torch.Size([4, 64, 149, 1024])
+        # fake()
+        return ssl_feature, torch.stack(intermediates) 
 
     @property
     def device(self):

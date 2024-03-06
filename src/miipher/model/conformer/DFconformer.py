@@ -88,6 +88,7 @@ class DFconformer(nn.Module):
 
         out = self.dense_inp(inp)
         
+        
         if condition is not None:
             condition = self.dense_cond(condition)
             
@@ -105,11 +106,11 @@ class DFconformer(nn.Module):
         cross_attn_mask = None
         if self.use_global_attn_mask and self.training:
             if self.cond_as_prefix:
-                self_attn_mask = generate_mask_with_prob((N_FRAME + COND_N_FRAME, N_FRAME + COND_N_FRAME), self.attn_mask_prob, device)
+                self_attn_mask = generate_mask_with_prob((N_FRAME + COND_N_FRAME, N_FRAME + COND_N_FRAME), self.attn_mask_prob, inp.device)
             else:
-                self_attn_mask = generate_mask_with_prob((N_FRAME, N_FRAME), self.attn_mask_prob, device)
+                self_attn_mask = generate_mask_with_prob((N_FRAME, N_FRAME), self.attn_mask_prob, inp.device)
                 if condition is not None:
-                    cross_attn_mask = generate_mask_with_prob((N_FRAME, COND_N_FRAME), self.attn_mask_prob, device)
+                    cross_attn_mask = generate_mask_with_prob((N_FRAME, COND_N_FRAME), self.attn_mask_prob, inp.device)
 
         for i, module in enumerate(self.blocks):
             out_layer, self_att_map, cross_att_map = module(out, condition, self_attn_mask, cross_attn_mask, branch_mask) # batch_size mask

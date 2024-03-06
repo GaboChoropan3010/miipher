@@ -5,6 +5,7 @@ import webdataset as wds
 import torch
 import torchaudio
 import hydra
+from scipy.io.wavfile import write
 
 import glob
 
@@ -12,13 +13,20 @@ from .data import SimEnhanceDataset
 
 
 class MiipherDataModule(LightningDataModule):
-    def __init__(self, cfg) -> None:
+    def __init__(self, cfg, input_phonemes) -> None:
         super().__init__()
         self.speech_ssl_processor = hydra.utils.instantiate(
             cfg.data.speech_ssl_processor.processor
         )
         self.speech_ssl_sr = cfg.data.speech_ssl_processor.sr
         self.phoneme_tokenizer = hydra.utils.instantiate(cfg.data.phoneme_tokenizer)
+        # self.text2phone_dict = dict()
+
+
+        # self.text2phone = hydra.utils.instantiate(
+        #         self.cfg.preprocess.text2phone_model, language='eng-us'
+        # )
+        self.input_phonemes = input_phonemes
         self.cfg = cfg
 
     def get_dataset(self, task = 'train'): # **** TODO(HAICI) ***
@@ -52,7 +60,13 @@ class MiipherDataModule(LightningDataModule):
         rir_list = glob.glob(rir_path)
         
         # noise_list = glob.glob('/N/project/SAIGE_shared/noise/WHAM/high_res_wham/audio/*.wav')
-        noise_list = glob.glob('/data/hy17/noise/TAU_Urban_Audio/audio/*.wav')
+        # noise_list = glob.glob('/data/hy17/noise/TAU_Urban_Audio/audio/*.wav')
+        
+        noise_list = glob.glob('/data/hy17/noise/DNS/*/*/*/*.wav') + \
+      				 glob.glob('/data/hy17/noise/ISOLATED_URBAN_SOUND/*/*/*.wav') + \
+					 glob.glob('/data/hy17/noise/SFS-static/*/*/*/*.wav') + \
+					 glob.glob('/data/hy17/noise/TAU_Urban_Audio/*/*.wav') + \
+					 glob.glob('/data/hy17/noise/WHAM/high_res_wham/audio/*.wav')
         
         
         # elif task == 'val':
@@ -75,8 +89,8 @@ class MiipherDataModule(LightningDataModule):
         if task == 'train':
             dataset = SimEnhanceDataset(
                             name='sim', 
-                            sample_rate=44100,
-                            size=44100 * 3 , # 3s
+                            sample_rate=24000,
+                            size=24000 * 3 , # 3s
                             speech_list=speech_list, 
                             noise_list=noise_list, 
                             reverb_list=rir_list, 
@@ -111,8 +125,8 @@ class MiipherDataModule(LightningDataModule):
         else:
             dataset = SimEnhanceDataset(
                             name='sim', 
-                            sample_rate=44100,
-                            size=44100 * 3 , # 3s
+                            sample_rate=24000,
+                            size=24000 * 3 , # 3s
                             speech_list=speech_list, 
                             noise_list=noise_list, 
                             reverb_list=rir_list, 
@@ -198,14 +212,14 @@ class MiipherDataModule(LightningDataModule):
 
         for sample in batch:
 
-            # clean_wav, sr = sample["speech.wav"]
-
             clean_wav = torch.tensor(sample["clean"])
-            sr = 44100 # **** TODO(HAICI) ***
+            
+            sr = 24000 # **** TODO(HAICI) ***
             clean_wav_16ks.append(
                 torchaudio.functional.resample(clean_wav, sr, new_freq=16000).squeeze()[:16000*20]
             )
-            degraded_wav = torch.tensor(sample["noise"])
+            
+            degraded_wav = torch.tensor(sample["noisy"])
             degraded_wav_16ks.append(
                 torchaudio.functional.resample(
                     degraded_wav, sr, new_freq=16000
@@ -227,10 +241,36 @@ class MiipherDataModule(LightningDataModule):
             sampling_rate=16000,
             padding=True,
         )
+        
+        
+        # input_phonems = self.get_phonemes_input_ids(
+        #     word_segmented_text='', lang_code="eng-us"
+        # )
+        # print(input_phot)
+        
         # output["phoneme_input_ids"] = self.phoneme_tokenizer(
         #     [b["phoneme.txt"] for b in batch], return_tensors="pt", padding=True
         # )
+        
+        # space_phonem_id = {'input_ids': torch.tensor([[  0, 171,   8,   2]]), 'attention_mask': torch.tensor([[1, 1, 1, 1]])}
         output["phoneme_input_ids"] = self.phoneme_tokenizer(
-            ['' for b in batch], return_tensors="pt", padding=True
+            [self.input_phonemes for b in batch], return_tensors="pt", padding=True
         )
+        
         return output
+        
+        
+        
+    @torch.inference_mode()
+    def get_phonemes_input_ids(self, word_segmented_text, lang_code):
+        
+        input_phonemes = self.text2phone.infer_sentence(
+            word_segmented_text
+        )
+        # input_ids = self.phoneme_tokenizer(input_phonemes, return_tensors="pt")
+        return input_phonemes
+    
+        # # output["phoneme_input_ids"] = self.phoneme_tokenizer(
+        # #     ['' for b in batch], return_tensors="pt", padding=True
+        # # )
+        # return output

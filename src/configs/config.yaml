@@ -68,12 +68,12 @@ preprocess:
         #   - '**/mix.flac'
         - 
           # - /mnt/hdd/datasets/TAU_urban/audio/
-          - /data/hy17/noise/TAU_Urban_Audio
+          - /data/hy17/noise/
           - '**/*.wav'
-        - 
-          # - /mnt/hdd/datasets/TAU_urban/audio/
-          - /data/hy17/noise/DNS
-          - '**/*.wav'
+        # - 
+        #   # - /mnt/hdd/datasets/TAU_urban/audio/
+        #   - /data/hy17/noise/DNS
+        #   - '**/*.wav'
   train_tar_sink:
     _target_: webdataset.ShardWriter
     # pattern: "/mnt/hdd/miipher/miipher-train-%06d.tar.gz"
@@ -91,8 +91,8 @@ data:
   # val_dataset_path: /mnt/hdd/miipher/miipher-val-{000000..000007}.tar.gz
   # train_dataset_path: 
   # val_dataset_path: 
-  train_batch_size: 8  # **** TODO(HAICI) ***
-  val_batch_size: 8
+  train_batch_size: 80  # **** TODO(HAICI) ***
+  val_batch_size: 32
   speech_ssl_processor: # **** TODO(HAICI) ***
     # --- wavlm --- 
     # processor: 
@@ -112,6 +112,7 @@ train:
     # - _target_: lightning.pytorch.loggers.WandbLogger
     #   project: "miipher"
     - _target_: lightning.pytorch.loggers.TensorBoardLogger
+      # save_dir: "../tb_runs/wavlm-df"
       save_dir: "../tb_runs/w2v-bert"
       # project: "miipher-w2v-bert" # **** TODO(HAICI) ***
   trainer:
