@@ -18,11 +18,11 @@ def main(cfg: DictConfig):
             )
     input_phonemes = text2phone.infer_sentence('')
 
-    # lightning_module = MiipherLightningModule(cfg)
+    lightning_module = MiipherLightningModule(cfg)
     
     # miipher_path = "https://huggingface.co/spaces/Wataru/Miipher/resolve/main/miipher.ckpt"
-    miipher_path = "/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/w2v-bert/lightning_logs/version_5/checkpoints/checkpoint.ckpt"
-    lightning_module = MiipherLightningModule.load_from_checkpoint(miipher_path,map_location='cpu')
+    # miipher_path = "/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/wavlm-df/lightning_logs/version_1/checkpoints/checkpoint.ckpt"
+    # lightning_module = MiipherLightningModule.load_from_checkpoint(miipher_path,map_location='cpu')
     
     # miipher_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/wavlm/lightning_logs/version_3/checkpoints/epoch=16-step=18343.ckpt'
     # lightning_module.miipher = MiipherLightningModule(cfg)

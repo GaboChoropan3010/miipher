@@ -4,6 +4,7 @@ import torch
 import hydra
 import tempfile
 import torchaudio
+from argparse import ArgumentParser
 
 import gradio as gr
 
@@ -19,29 +20,6 @@ from lightning_vocoders.models.hifigan.xvector_lightning_module import HiFiGANXv
 
 from matplotlib import pyplot as plt
 
-# ---- Original wavlm ----
-# miipher_path = "https://huggingface.co/spaces/Wataru/Miipher/resolve/main/miipher.ckpt"
-
-
-# ---- Retrained wavlm ----
-miipher_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/wavlm/lightning_logs/version_4/checkpoints/checkpoint1.ckpt'
-
-# ---- wavlm-df -----
-# miipher_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/wavlm-df/lightning_logs/version_1/checkpoints/checkpoint.ckpt'
-
-# ---- w2v-bert ----
-# miipher_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/tb_runs/w2v-bert/lightning_logs/version_5/checkpoints/checkpoint.ckpt'
-
-miipher = MiipherLightningModule.load_from_checkpoint(miipher_path,map_location='cpu')
-
-# ---- Load vocoder ----
-vocoder = HiFiGANXvectorLightningModule.load_from_checkpoint("https://huggingface.co/spaces/Wataru/Miipher/resolve/main/vocoder_finetuned.ckpt",map_location='cpu')
-
-# vocoder = HiFiGANXvectorLightningModule.load_from_checkpoint("/home/hy17/Projects/EXTERNAL/ssl-vocoders/tb_logs/lightning_logs/version_28/checkpoints/epoch=19-step=49160.ckpt",map_location='cpu')
-
-xvector_model = hydra.utils.instantiate(vocoder.cfg.data.xvector.model)
-xvector_model = xvector_model.to('cpu')
-preprocessor = PreprocessForInfer(miipher.cfg)
     
 
 class EvalDataset(data.Dataset):
@@ -94,22 +72,38 @@ def main(wav_path,transcript,lang_code, note = '', re=False):
         return cleaned_wav
 
 
-wav_path = '/data/hy17/eval_samples/miipher/obj0_noisy.wav'
+if __name__ == '__main__':
+    
+    parser = ArgumentParser()
+   
+    parser.add_argument("--ckpt", type=str, required=True, default='epoch=12-step=14157.ckpt')
+    parser.add_argument("--wav_path", required=True)
 
-# wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/eval_wavlm_orig/AQECC_eval_set/*/*.wav' # AQECC_eval_set
-wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/eval_wavlm_finetune/DEMO_samples/*/*.wav' # DEMO_samples;
-# wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/xxxx/Edinburgh_dataset/noisy_testset_wav/*.wav' # Edinburgh_dataset
-# wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/xxxx/daps_real_eval_set/*/*/*.wav' # daps_real_eval_set
+    args = parser.parse_args()
+   
+    miipher_path = args.ckpt
+    print(miipher_path)
+    fake()
+    miipher = MiipherLightningModule.load_from_checkpoint(miipher_path,map_location='cpu')
 
-# wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/xxxx/DEMO_samples/voicefixer/*.wav' # DEMO_samples;
+    # ---- Load vocoder ----
+    vocoder = HiFiGANXvectorLightningModule.load_from_checkpoint("https://huggingface.co/spaces/Wataru/Miipher/resolve/main/vocoder_finetuned.ckpt",map_location='cpu')
 
-# note = 'wavlm-finetune'
-if not '*' in wav_path:
-    main(wav_path = wav_path, transcript = '', lang_code = "eng-us", note=note)
-else:
-    for path in tqdm(glob.glob(wav_path)):
-        # print(path)
-        name = path.split('/')
-        cleaned_wav = main(wav_path = path, transcript = '', lang_code = "eng-us", re=True)
-        torchaudio.save(path, cleaned_wav.view(1,-1), sample_rate=22050,format='wav')
+
+    xvector_model = hydra.utils.instantiate(vocoder.cfg.data.xvector.model)
+    xvector_model = xvector_model.to('cpu')
+    preprocessor = PreprocessForInfer(miipher.cfg)
+
+    # wav_path = '/home/hy17/Projects/EXTERNAL/miipher/miipher/xxxx/DEMO_samples/voicefixer/*.wav' # DEMO_samples;
+    wav_path = args.wav_path
+
+    # note = 'w2v-bert-new'
+    if not '*' in wav_path:
+        main(wav_path = wav_path, transcript = '', lang_code = "eng-us", note=note)
+    else:
+        for path in tqdm(glob.glob(wav_path)):
+            # print(path)
+            name = path.split('/')
+            cleaned_wav = main(wav_path = path, transcript = '', lang_code = "eng-us", re=True)
+            # torchaudio.save(xxxx, cleaned_wav.view(1,-1), sample_rate=22050,format='wav')
 

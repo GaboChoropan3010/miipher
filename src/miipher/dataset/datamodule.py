@@ -43,12 +43,16 @@ class MiipherDataModule(LightningDataModule):
             # print(len(speech_list))
             
             # tr_path = '/N/project/SAIGE_shared/librittsR/LibriTTS_R/train-clean-360' 
-            tr_path = '/data/hy17/librittsR/LibriTTS_R/train-clean-360/*/*/*.wav'
-            speech_list = glob.glob(tr_path)
+            tr_path1 = '/data/hy17/librittsR/LibriTTS_R/train-clean-360/*/*/*.wav'
+            tr_path2 = '/data/hy17/daps/train/*/*.wav'
+            speech_list = glob.glob(tr_path1)+ \
+                          glob.glob(tr_path2)
+
         else:
-            tr_path = '/data/hy17/librittsR/LibriTTS_R/dev-clean' 
-            speech_list = glob.glob(tr_path + '/*/*/*.wav')
-        
+            tr_path1 = '/data/hy17/librittsR/LibriTTS_R/dev-clean/*/*/*.wav'
+            tr_path2 = '/data/hy17/daps/valid/*.wav'
+            speech_list = glob.glob(tr_path1) + \
+                          glob.glob(tr_path2)
         
         # rir_list = prepare_files([
         #     f"/sensei-fs/users/haiciy/DataProc/studiosound2-asim/datasets/rir/mit_rir_{task}.txt",
